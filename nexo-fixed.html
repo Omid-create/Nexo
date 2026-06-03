@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexo — Daily Word</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0b0b0f; --surface: #13131a; --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #f0ede8; --muted: #8a8798;
+    --accent: #c8b8ff; --accent2: #7c5cbf; --accent-glow: rgba(200,184,255,0.12);
+    --gold: #f0c97a; --gold-dim: rgba(240,201,122,0.15);
+    --green: #7edeb0; --green-dim: rgba(126,222,176,0.15);
+    --red: #f07e7e; --red-dim: rgba(240,126,126,0.15);
+    --owner: #f0c97a; --owner-dim: rgba(240,201,122,0.12);
+    --serif: 'Playfair Display', Georgia, serif;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+  #auth-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px; }
+  .auth-box { background:var(--surface); border:1px solid var(--border2); border-radius:24px; padding:48px 44px; width:100%; max-width:420px; }
+  .auth-logo { font-family:var(--serif); font-size:28px; font-weight:700; text-align:center; margin-bottom:6px; }
+  .auth-logo span { color:var(--accent); }
+  .auth-tagline { font-size:13px; color:var(--muted); text-align:center; margin-bottom:36px; }
+  .auth-tabs { display:flex; background:var(--surface2); border-radius:12px; padding:4px; margin-bottom:28px; }
+  .auth-tab { flex:1; padding:9px; border:none; background:transparent; color:var(--muted); font-family:var(--sans); font-size:13px; font-weight:500; border-radius:9px; cursor:pointer; transition:all .2s; }
+  .auth-tab.active { background:var(--accent2); color:#fff; }
+  .form-group { margin-bottom:16px; }
+  .form-label { display:block; font-size:12px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:7px; }
+  .form-input { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:11px 14px; font-family:var(--sans); font-size:14px; color:var(--text); outline:none; transition:border-color .2s; }
+  .form-input:focus { border-color:var(--accent2); }
+  .form-input::placeholder { color:var(--muted); opacity:.5; }
+  .btn-full { width:100%; padding:13px; border:none; border-radius:50px; background:var(--accent); color:#1a0f3a; font-family:var(--sans); font-size:14px; font-weight:500; cursor:pointer; transition:all .2s; margin-top:8px; }
+  .btn-full:hover { background:#d9ccff; transform:translateY(-1px); }
+  .auth-msg { font-size:13px; min-height:18px; margin-top:12px; text-align:center; }
+  .owner-hint { font-size:12px; color:var(--muted); text-align:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); cursor:pointer; transition:color .2s; }
+  .owner-hint:hover { color:var(--owner); }
+  #app-shell { display:none; }
+  nav { display:flex; align-items:center; justify-content:space-between; padding:16px 32px; border-bottom:1px solid var(--border); background:rgba(11,11,15,.9); backdrop-filter:blur(12px); }
+  .logo { font-family:var(--serif); font-size:22px; letter-spacing:.04em; color:var(--text); cursor:pointer; }
+  .logo span { color:var(--accent); }
+  .nav-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .nav-btn { font-family:var(--sans); font-size:13px; padding:6px 14px; border-radius:20px; border:1px solid transparent; cursor:pointer; transition:all .2s; color:var(--muted); background:transparent; }
+  .nav-btn:hover { color:var(--text); background:var(--surface2); }
+  .nav-btn.active { color:var(--accent); border-color:var(--accent2); background:var(--accent-glow); }
+  .owner-badge { font-size:10px; font-family:var(--mono); background:var(--owner-dim); color:var(--owner); border:1px solid rgba(240,201,122,.3); border-radius:20px; padding:3px 10px; letter-spacing:.06em; }
+  .nav-user { font-size:12px; color:var(--muted); padding:6px 12px; }
+  .nav-logout { font-size:12px; color:var(--muted); padding:6px 10px; border:1px solid var(--border2); border-radius:20px; background:transparent; cursor:pointer; font-family:var(--sans); transition:all .2s; }
+  .nav-logout:hover { color:var(--red); border-color:var(--red); }
+  .page { display:none; animation:fadeIn .3s ease; }
+  .page.active { display:block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .home-wrap { max-width:680px; margin:0 auto; padding:60px 24px 80px; }
+  .day-label { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-bottom:40px; }
+  .word-card { background:var(--surface); border:1px solid var(--border2); border-radius:20px; padding:44px 48px; position:relative; overflow:hidden; }
+  .word-card::before { content:''; position:absolute; top:-40px; right:-40px; width:200px; height:200px; background:radial-gradient(circle, rgba(200,184,255,.08) 0%, transparent 70%); pointer-events:none; }
+  .word-title-row { display:flex; align-items:flex-start; gap:14px; margin-bottom:8px; }
+  .word-title { font-family:var(--serif); font-size:52px; font-weight:700; color:var(--text); line-height:1.1; letter-spacing:-.01em; }
+  .sound-btn { background:var(--surface2); border:1px solid var(--border2); border-radius:50%; width:42px; height:42px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; margin-top:10px; transition:all .2s; color:var(--accent); font-size:18px; }
+  .sound-btn:hover { background:var(--accent-glow); border-color:var(--accent2); transform:scale(1.08); }
+  .sound-btn.playing { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+  .word-ipa { font-family:var(--mono); font-size:15px; color:var(--accent); margin-bottom:6px; opacity:.8; }
+  .word-pos { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:28px; }
+  .word-divider { width:40px; height:1px; background:var(--border2); margin-bottom:24px; }
+  .word-meaning-label { font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .word-meaning { font-size:20px; color:var(--text); font-weight:300; line-height:1.5; margin-bottom:28px; }
+  .word-example-block { background:var(--surface2); border-left:2px solid var(--accent2); border-radius:0 10px 10px 0; padding:16px 20px; margin-bottom:32px; }
+  .word-example-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; }
+  .word-example { font-family:var(--serif); font-style:italic; font-size:17px; color:var(--text); opacity:.9; }
+  .card-actions { display:flex; gap:12px; flex-wrap:wrap; }
+  .btn-primary { font-family:var(--sans); font-size:14px; font-weight:500; padding:12px 28px; border-radius:50px; border:none; background:var(--accent); color:#1a0f3a; cursor:pointer; transition:all .2s; }
+  .btn-primary:hover { background:#d9ccff; transform:translateY(-1px); }
+  .btn-secondary { font-family:var(--sans); font-size:14px; padding:12px 28px; border-radius:50px; border:1px solid var(--border2); background:transparent; color:var(--muted); cursor:pointer; transition:all .2s; }
+  .btn-secondary:hover { color:var(--text); border-color:var(--accent2); background:var(--accent-glow); }
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:28px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; text-align:center; }
+  .stat-value { font-family:var(--serif); font-size:28px; font-weight:700; color:var(--text); line-height:1; margin-bottom:6px; }
+  .stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .quiz-wrap { max-width:560px; margin:0 auto; padding:60px 24px 80px; }
+  .quiz-tag { font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:.12em; text-transform:uppercase; margin-bottom:10px; display:block; }
+  .quiz-title { font-family:var(--serif); font-size:32px; font-weight:700; margin-bottom:6px; }
+  .quiz-sub { font-size:14px; color:var(--muted); margin-bottom:40px; }
+  .progress-bar { height:3px; background:var(--surface2); border-radius:2px; margin-bottom:40px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .4s ease; }
+  .quiz-q-card { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:32px; margin-bottom:20px; }
+  .quiz-q-num { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.1em; margin-bottom:14px; }
+  .quiz-q-row { display:flex; align-items:center; gap:12px; }
+  .quiz-q-text { font-family:var(--serif); font-size:22px; color:var(--text); line-height:1.4; flex:1; }
+  .quiz-options { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+  .quiz-opt { display:flex; align-items:center; gap:14px; padding:16px 20px; border-radius:12px; border:1px solid var(--border2); background:var(--surface); cursor:pointer; transition:all .18s; text-align:left; font-family:var(--sans); font-size:15px; color:var(--text); }
+  .quiz-opt:hover:not(:disabled) { border-color:var(--accent2); background:var(--accent-glow); }
+  .quiz-opt.correct { border-color:var(--green); background:var(--green-dim); color:var(--green); }
+  .quiz-opt.wrong { border-color:var(--red); background:var(--red-dim); color:var(--red); }
+  .opt-letter { font-family:var(--mono); font-size:12px; width:28px; height:28px; border-radius:8px; background:var(--surface2); display:flex; align-items:center; justify-content:center; color:var(--muted); flex-shrink:0; }
+  .quiz-opt.correct .opt-letter { background:rgba(126,222,176,.3); color:var(--green); }
+  .quiz-opt.wrong .opt-letter { background:rgba(240,126,126,.3); color:var(--red); }
+  .quiz-feedback { min-height:36px; font-size:14px; color:var(--muted); text-align:center; padding:8px; }
+  .quiz-feedback.show-correct { color:var(--green); }
+  .quiz-feedback.show-wrong { color:var(--red); }
+  .quiz-nav { display:flex; justify-content:flex-end; margin-top:8px; }
+  .results-card { background:var(--surface); border:1px solid var(--border2); border-radius:20px; padding:48px 40px; text-align:center; }
+  .results-score { font-family:var(--serif); font-size:72px; font-weight:700; color:var(--accent); line-height:1; margin-bottom:6px; }
+  .results-label { font-size:14px; color:var(--muted); margin-bottom:32px; }
+  .results-msg { font-family:var(--serif); font-size:22px; color:var(--text); margin-bottom:32px; font-style:italic; }
+  .admin-wrap { max-width:720px; margin:0 auto; padding:60px 24px 80px; }
+  .admin-title { font-family:var(--serif); font-size:36px; font-weight:700; margin-bottom:6px; }
+  .admin-sub { font-size:14px; color:var(--muted); margin-bottom:40px; }
+  .admin-section { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:28px 32px; margin-bottom:20px; }
+  .admin-section-title { font-size:13px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:20px; }
+  .form-row { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+  .form-row-label { font-size:13px; color:var(--muted); }
+  .lookup-row { display:flex; gap:10px; }
+  .lookup-row .form-input { flex:1; }
+  .btn-lookup { font-family:var(--sans); font-size:13px; font-weight:500; padding:0 20px; border-radius:10px; border:none; background:var(--accent2); color:#fff; cursor:pointer; white-space:nowrap; transition:all .2s; height:44px; }
+  .btn-lookup:hover { background:#9570d4; }
+  .btn-lookup:disabled { opacity:.5; cursor:not-allowed; }
+  .lookup-result { background:var(--surface2); border:1px solid var(--border2); border-radius:12px; padding:18px 20px; margin-bottom:16px; display:none; }
+  .lookup-result.visible { display:block; }
+  .lookup-result-word { font-family:var(--serif); font-size:24px; color:var(--text); margin-bottom:4px; }
+  .lookup-result-ipa { font-family:var(--mono); font-size:13px; color:var(--accent); margin-bottom:10px; }
+  .lookup-use-btn { margin-top:14px; font-family:var(--sans); font-size:13px; font-weight:500; padding:8px 20px; border-radius:20px; border:1px solid var(--accent2); background:var(--accent-glow); color:var(--accent); cursor:pointer; transition:all .2s; }
+  .lookup-use-btn:hover { background:var(--accent2); color:#fff; }
+  .word-list { display:flex; flex-direction:column; gap:10px; }
+  .word-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--surface2); border-radius:10px; border:1px solid var(--border); gap:10px; }
+  .word-row-info { flex:1; min-width:0; }
+  .word-row-text { font-family:var(--serif); font-size:18px; color:var(--text); }
+  .word-row-meaning { font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .word-row-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .word-row-sound { background:none; border:1px solid var(--border2); border-radius:8px; color:var(--muted); cursor:pointer; font-size:14px; padding:5px 9px; transition:all .15s; }
+  .word-row-sound:hover { color:var(--accent); border-color:var(--accent2); }
+  .word-row-del { background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px; padding:5px 8px; border-radius:6px; transition:all .15s; }
+  .word-row-del:hover { color:var(--red); background:var(--red-dim); }
+  .badge { display:inline-block; font-family:var(--mono); font-size:10px; letter-spacing:.08em; padding:3px 8px; border-radius:20px; background:var(--gold-dim); color:var(--gold); margin-left:10px; vertical-align:middle; }
+  .admin-msg { font-size:13px; min-height:18px; margin-top:12px; }
+  #page-owner { background:var(--bg); }
+  .owner-wrap { max-width:900px; margin:0 auto; padding:60px 24px 80px; }
+  .owner-header { display:flex; align-items:center; gap:14px; margin-bottom:48px; }
+  .owner-crown { font-size:32px; }
+  .owner-title { font-family:var(--serif); font-size:36px; font-weight:700; }
+  .owner-sub { font-size:14px; color:var(--muted); }
+  .owner-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:36px; }
+  .owner-stat { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; text-align:center; }
+  .owner-stat-val { font-family:var(--serif); font-size:32px; font-weight:700; color:var(--owner); line-height:1; margin-bottom:6px; }
+  .owner-stat-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .owner-section { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:28px 32px; margin-bottom:20px; }
+  .owner-section-title { font-size:13px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--owner); margin-bottom:20px; }
+  .user-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:12px; }
+  .user-card-name { font-size:16px; font-weight:500; color:var(--text); }
+  .user-card-username { font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:2px; }
+  .user-card-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+  .user-mini-stat { background:var(--surface); border-radius:8px; padding:10px 12px; text-align:center; }
+  .user-mini-val { font-size:18px; font-weight:500; color:var(--text); line-height:1; margin-bottom:4px; }
+  .user-mini-label { font-size:11px; color:var(--muted); }
+  .user-card-footer { margin-top:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .user-words-preview { font-size:12px; color:var(--muted); font-style:italic; }
+  .btn-danger-sm { font-family:var(--sans); font-size:12px; padding:5px 14px; border-radius:20px; border:1px solid rgba(240,126,126,.3); background:var(--red-dim); color:var(--red); cursor:pointer; transition:all .2s; }
+  .btn-danger-sm:hover { background:var(--red); color:#fff; }
+  .owner-search { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:11px 14px; font-family:var(--sans); font-size:14px; color:var(--text); outline:none; margin-bottom:20px; transition:border-color .2s; }
+  .owner-search:focus { border-color:var(--owner); }
+  .owner-search::placeholder { color:var(--muted); opacity:.5; }
+  .owner-empty { text-align:center; padding:40px 0; color:var(--muted); font-size:14px; }
+  .owner-login-box { background:var(--owner-dim); border:1px solid rgba(240,201,122,.25); border-radius:16px; padding:20px 24px; margin-bottom:28px; display:flex; align-items:center; gap:12px; }
+  .owner-login-icon { font-size:22px; }
+  .owner-login-text { font-size:13px; color:var(--owner); }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(200,184,255,.3); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ AUTH ══════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">N<span>e</span>xo</div>
+    <p class="auth-tagline">Your personal vocabulary journey</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Log in</button>
+      <button class="auth-tab" onclick="switchTab('signup')">Sign up</button>
+    </div>
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="login-user" placeholder="your username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <button class="btn-full" onclick="doLogin()">Log in</button>
+      <p class="auth-msg" id="login-msg"></p>
+      <p class="owner-hint" onclick="switchTab('owner')">Owner access →</p>
+    </div>
+    <div id="signup-form" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="signup-user" placeholder="choose a username" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display name</label>
+        <input class="form-input" id="signup-name" placeholder="your name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="signup-pass" type="password" placeholder="at least 4 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignup()" />
+      </div>
+      <button class="btn-full" onclick="doSignup()">Create account</button>
+      <p class="auth-msg" id="signup-msg"></p>
+    </div>
+    <div id="owner-form" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Owner password</label>
+        <input class="form-input" id="owner-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doOwnerLogin()" />
+      </div>
+      <button class="btn-full" style="background:var(--owner);color:#1a1200;" onclick="doOwnerLogin()">Enter owner dashboard</button>
+      <p class="auth-msg" id="owner-msg"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APP SHELL ══════════ -->
+<div id="app-shell">
+  <nav>
+    <span class="logo" onclick="showPage('home')">N<span>e</span>xo</span>
+    <div class="nav-right">
+      <button class="nav-btn active" id="nav-home"  onclick="showPage('home')">Daily Word</button>
+      <button class="nav-btn"        id="nav-quiz"  onclick="showPage('quiz')">Quiz</button>
+      <button class="nav-btn"        id="nav-admin" onclick="showPage('admin')">Admin</button>
+      <span class="nav-user" id="nav-username"></span>
+      <button class="nav-logout" onclick="doLogout()">Log out</button>
+    </div>
+  </nav>
+  <div class="page active" id="page-home">
+    <div class="home-wrap">
+      <p class="day-label" id="today-label"></p>
+      <div class="word-card">
+        <p class="word-number">Word of the day</p>
+        <div class="word-title-row">
+          <h1 class="word-title" id="wc-title">—</h1>
+          <button class="sound-btn" id="home-sound-btn" onclick="speakWord('home')" title="Hear pronunciation">🔊</button>
+        </div>
+        <p class="word-ipa" id="wc-ipa"></p>
+        <p class="word-pos" id="wc-pos"></p>
+        <div class="word-divider"></div>
+        <p class="word-meaning-label">Definition</p>
+        <p class="word-meaning" id="wc-meaning"></p>
+        <div class="word-example-block">
+          <p class="word-example-label">Example</p>
+          <p class="word-example" id="wc-example"></p>
+        </div>
+        <div class="card-actions">
+          <button class="btn-primary" onclick="showPage('quiz')">Take Today's Quiz →</button>
+          <button class="btn-secondary" id="learned-btn" onclick="markLearned()">Mark as Learned</button>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value" id="stat-streak">—</div><div class="stat-label">Day Streak 🔥</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-learned">—</div><div class="stat-label">Words Learned</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-score">—</div><div class="stat-label">Best Quiz %</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="page" id="page-quiz">
+    <div class="quiz-wrap">
+      <span class="quiz-tag">Daily quiz</span>
+      <h2 class="quiz-title">Test Your Knowledge</h2>
+      <p class="quiz-sub">Answer all questions to see your score</p>
+      <div class="progress-bar"><div class="progress-fill" id="q-progress" style="width:0%"></div></div>
+      <div id="quiz-body"></div>
+      <div id="quiz-results" style="display:none;"></div>
+    </div>
+  </div>
+  <div class="page" id="page-admin">
+    <div class="admin-wrap">
+      <h2 class="admin-title">Admin Panel</h2>
+      <p class="admin-sub">Manage your personal word library</p>
+      <div class="admin-section">
+        <p class="admin-section-title">🔍 Look up a word automatically</p>
+        <div class="form-row">
+          <label class="form-row-label">Type a word and fetch its details (free dictionary)</label>
+          <div class="lookup-row">
+            <input class="form-input" id="lookup-input" placeholder="e.g. Serendipity" onkeydown="if(event.key==='Enter')doLookup()" />
+            <button class="btn-lookup" id="lookup-btn" onclick="doLookup()">Look up</button>
+          </div>
+        </div>
+        <div class="lookup-result" id="lookup-result">
+          <div class="lookup-result-word" id="lr-word"></div>
+          <div class="lookup-result-ipa" id="lr-ipa"></div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;" id="lr-pos-label"></div>
+          <div style="font-size:14px;color:var(--muted);line-height:1.6;" id="lr-def"></div>
+          <div style="margin-top:10px;font-size:13px;color:var(--muted);font-style:italic;" id="lr-ex"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="lookup-use-btn" onclick="useLookupResult()">+ Add to my library</button>
+            <button class="sound-btn" style="margin-top:14px;width:38px;height:38px;font-size:16px;" onclick="speakText(document.getElementById('lr-word').textContent)">🔊</button>
+          </div>
+        </div>
+        <p class="admin-msg" id="lookup-msg"></p>
+      </div>
+      <div class="admin-section">
+        <p class="admin-section-title">Add word manually</p>
+        <div class="form-row"><label class="form-row-label">Word</label><input class="form-input" id="a-word" placeholder="e.g. Ephemeral" /></div>
+        <div class="form-row"><label class="form-row-label">IPA pronunciation</label><input class="form-input" id="a-ipa" placeholder="e.g. /ɪˈfemərəl/" /></div>
+        <div class="form-row"><label class="form-row-label">Part of speech</label><input class="form-input" id="a-pos" placeholder="e.g. adjective" /></div>
+        <div class="form-row"><label class="form-row-label">Definition</label><input class="form-input" id="a-meaning" placeholder="e.g. Lasting a very short time" /></div>
+        <div class="form-row"><label class="form-row-label">Example sentence</label><input class="form-input" id="a-example" placeholder="e.g. Happiness is ephemeral." /></div>
+        <div class="form-row"><label class="form-row-label">Wrong quiz options (comma-separated, 3)</label><input class="form-input" id="a-wrong" placeholder="e.g. long-lasting, dangerous, radiant" /></div>
+        <button class="btn-primary" style="margin-top:4px;" onclick="addWord()">Add Word</button>
+        <p class="admin-msg" id="admin-msg"></p>
+      </div>
+      <div class="admin-section">
+        <p class="admin-section-title">Word library <span class="badge" id="word-count-badge">0 words</span></p>
+        <div class="word-list" id="word-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ OWNER SHELL ══════════ -->
+<div id="owner-shell" style="display:none;">
+  <nav>
+    <span class="logo">N<span>e</span>xo</span>
+    <div class="nav-right">
+      <span class="owner-badge">👑 Owner</span>
+      <button class="nav-logout" onclick="doLogout()">Log out</button>
+    </div>
+  </nav>
+  <div class="page active" id="page-owner">
+    <div class="owner-wrap">
+      <div class="owner-header">
+        <div class="owner-crown">👑</div>
+        <div>
+          <div class="owner-title">Owner Dashboard</div>
+          <div class="owner-sub">Full visibility into all users and activity</div>
+        </div>
+      </div>
+      <div class="owner-login-box">
+        <div class="owner-login-icon">🔐</div>
+        <div class="owner-login-text">You are logged in as the owner. Only you can see this dashboard.</div>
+      </div>
+      <div class="owner-stats" id="owner-stats"></div>
+      <div class="owner-section">
+        <p class="owner-section-title">All users</p>
+        <input class="owner-search" id="owner-search" placeholder="Search by name or username…" oninput="renderOwnerUsers()" />
+        <div id="owner-users-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const OWNER_PASSWORD = 'nexoownerplease123';
+const DEFAULT_WORDS = [
+  { text:'Ephemeral', ipa:'/ɪˈfemərəl/', pos:'adjective', meaning:'Lasting for a very short time.', example:'Happiness is ephemeral.', wrong:['long-lasting','dangerous','radiant'] },
+  { text:'Melancholy', ipa:'/ˈmelənˌkɒli/', pos:'noun / adjective', meaning:'A feeling of pensive sadness with no obvious cause.', example:'A deep melancholy settled over the empty house.', wrong:['great joy','sharp anger','dull hunger'] },
+  { text:'Sonder', ipa:'/ˈsɒndər/', pos:'noun', meaning:'The realization that each passerby has a vivid life of their own.', example:'She felt a sudden sonder watching the crowd from the café window.', wrong:['complete solitude','selective memory','mild confusion'] },
+  { text:'Liminal', ipa:'/ˈlɪmɪn(ə)l/', pos:'adjective', meaning:'Relating to a transitional stage between two states.', example:'The airport lounge is a liminal space between departure and arrival.', wrong:['completely fixed','loudly vibrant','deeply ancient'] },
+];
+
+function getUsers() { return JSON.parse(localStorage.getItem('nexo_users')||'{}'); }
+function saveUsers(u) { localStorage.setItem('nexo_users', JSON.stringify(u)); }
+function getCurrentUser() { return localStorage.getItem('nexo_current')||null; }
+function setCurrentUser(u) { localStorage.setItem('nexo_current', u); }
+function getUserData(u) { return getUsers()[u]||null; }
+function saveUserData(u,d) { const all=getUsers(); all[u]=d; saveUsers(all); }
+
+let currentUser=null, userData=null;
+
+function switchTab(tab) {
+  ['login','signup','owner'].forEach(t=>document.getElementById(t+'-form').style.display=t===tab?'':'none');
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='signup')));
+}
+
+function doLogin() {
+  const user=document.getElementById('login-user').value.trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value;
+  const msg=document.getElementById('login-msg');
+  if (!user||!pass){ msg.style.color='var(--red)'; msg.textContent='Please fill in all fields.'; return; }
+  const users=getUsers();
+  if (!users[user]||users[user].password!==btoa(pass)){ msg.style.color='var(--red)'; msg.textContent='Incorrect username or password.'; return; }
+  users[user].lastLogin=new Date().toISOString();
+  saveUsers(users);
+  setCurrentUser(user);
+  bootApp(user);
+}
+
+function doSignup() {
+  const user=document.getElementById('signup-user').value.trim().toLowerCase();
+  const name=document.getElementById('signup-name').value.trim();
+  const pass=document.getElementById('signup-pass').value;
+  const msg=document.getElementById('signup-msg');
+  if (!user||!name||!pass){ msg.style.color='var(--red)'; msg.textContent='Please fill in all fields.'; return; }
+  if (pass.length<4){ msg.style.color='var(--red)'; msg.textContent='Password must be at least 4 characters.'; return; }
+  if (/[^a-z0-9_]/.test(user)){ msg.style.color='var(--red)'; msg.textContent='Username: letters, numbers, underscores only.'; return; }
+  const users=getUsers();
+  if (users[user]){ msg.style.color='var(--red)'; msg.textContent='Username already taken.'; return; }
+  users[user]={password:btoa(pass),displayName:name,joinedAt:new Date().toISOString(),lastLogin:new Date().toISOString(),words:JSON.parse(JSON.stringify(DEFAULT_WORDS)),stats:{streak:1,learned:0,bestScore:null,learnedSet:[],quizHistory:[]}};
+  saveUsers(users);
+  setCurrentUser(user);
+  bootApp(user);
+}
+
+function doOwnerLogin() {
+  const pass=document.getElementById('owner-pass').value;
+  const msg=document.getElementById('owner-msg');
+  if (pass!==OWNER_PASSWORD){ msg.style.color='var(--red)'; msg.textContent='Incorrect owner password.'; return; }
+  localStorage.setItem('nexo_current','__owner__');
+  bootOwner();
+}
+
+function doLogout() {
+  localStorage.removeItem('nexo_current');
+  currentUser=null;userData=null;
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('owner-shell').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('owner-pass').value='';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  switchTab('login');
+}
+
+function bootApp(username) {
+  currentUser=username;userData=getUserData(username);
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('owner-shell').style.display='none';
+  document.getElementById('app-shell').style.display='block';
+  document.getElementById('nav-username').textContent=userData.displayName||username;
+  showPage('home');
+}
+
+function bootOwner() {
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('owner-shell').style.display='block';
+  renderOwnerDashboard();
+}
+
+function showPage(name) {
+  document.querySelectorAll('#app-shell .page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name==='quiz')initQuiz();
+  if (name==='admin')renderAdmin();
+  if (name==='home')updateHome();
+}
+
+function updateHome() {
+  if (!userData)return;
+  const now=new Date();
+  document.getElementById('today-label').textContent=now.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const words=userData.words||[];
+  if (!words.length){ document.getElementById('wc-title').textContent='No words yet'; document.getElementById('wc-meaning').textContent='Go to Admin to add your first word!'; ['wc-ipa','wc-pos','wc-example'].forEach(id=>document.getElementById(id).textContent=''); return; }
+  const wi=Math.floor((now-new Date(now.getFullYear(),0,0))/86400000)%words.length;
+  window._homeWordIdx=wi;
+  const w=words[wi];
+  document.getElementById('wc-title').textContent=w.text;
+  document.getElementById('wc-ipa').textContent=w.ipa||'';
+  document.getElementById('wc-pos').textContent=w.pos||'';
+  document.getElementById('wc-meaning').textContent=w.meaning;
+  document.getElementById('wc-example').textContent='"'+w.example+'"';
+  document.getElementById('stat-streak').textContent=userData.stats.streak;
+  document.getElementById('stat-learned').textContent=userData.stats.learned;
+  document.getElementById('stat-score').textContent=userData.stats.bestScore!==null?userData.stats.bestScore+'%':'—';
+  const already=(userData.stats.learnedSet||[]).includes(w.text);
+  const lb=document.getElementById('learned-btn');
+  lb.textContent=already?'✓ Learned':'Mark as Learned';lb.disabled=already;lb.style.opacity=already?'0.5':'';
+}
+
+function markLearned() {
+  if (!userData)return;
+  const w=userData.words[window._homeWordIdx];if (!w)return;
+  if (!userData.stats.learnedSet)userData.stats.learnedSet=[];
+  if (userData.stats.learnedSet.includes(w.text))return;
+  userData.stats.learnedSet.push(w.text);
+  userData.stats.learned=userData.stats.learnedSet.length;
+  saveUserData(currentUser,userData);
+  updateHome();
+}
+
+function speakText(text) {
+  if (!text||!window.speechSynthesis)return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=0.85;
+  window.speechSynthesis.speak(u);
+}
+
+function speakWord(ctx) {
+  const btn=document.getElementById(ctx+'-sound-btn');
+  if (btn){btn.classList.add('playing');setTimeout(()=>btn.classList.remove('playing'),1200);}
+  speakText(ctx==='home'?document.getElementById('wc-title').textContent:(window._quizCurrentWord||''));
+}
+
+let qData=[],qIdx=0,qAnswers=[],qLocked=false;
+function initQuiz() {
+  if (!userData||!userData.words||!userData.words.length){document.getElementById('quiz-body').innerHTML='<p style="color:var(--muted);text-align:center;padding:40px 0;">Add some words in Admin first!</p>';return;}
+  qData=shuffle(userData.words).slice(0,Math.min(userData.words.length,5)).map(w=>{
+    const correct=w.meaning.replace(/\.$/,'').toLowerCase().trim();
+    const pool=(w.wrong||[]).slice(0,3);while(pool.length<3)pool.push(['common','normal','typical'][pool.length]);
+    return {word:w.text,question:'What does "'+w.text+'" mean?',options:shuffle([correct,...pool]),correct};
+  });
+  qIdx=0;qAnswers=[];qLocked=false;
+  document.getElementById('quiz-results').style.display='none';
+  document.getElementById('quiz-body').style.display='';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  updateProgress();if (qIdx>=qData.length){showResults();return;}
+  const q=qData[qIdx];const L=['A','B','C','D'];
+  window._quizCurrentWord=q.word;
+  document.getElementById('quiz-body').innerHTML='<div class="quiz-q-card"><p class="quiz-q-num">Question '+(qIdx+1)+' of '+qData.length+'</p><div class="quiz-q-row"><p class="quiz-q-text">'+q.question+'</p><button class="sound-btn" id="quiz-sound-btn" onclick="speakWord(\'quiz\')" style="width:38px;height:38px;font-size:16px;">🔊</button></div></div><div class="quiz-options">'+q.options.map((opt,i)=>'<button class="quiz-opt" id="opt-'+i+'" onclick="selectOpt('+i+')"><span class="opt-letter">'+L[i]+'</span><span>'+cap(opt)+'</span></button>').join('')+'</div><div class="quiz-feedback" id="quiz-feedback"></div><div class="quiz-nav"><button class="btn-primary" id="next-btn" onclick="nextQuestion()" style="display:none;">Next →</button></div>';
+  qLocked=false;
+}
+
+function selectOpt(i) {
+  if (qLocked)return;qLocked=true;
+  const q=qData[qIdx],chosen=q.options[i],ok=chosen===q.correct;qAnswers.push(ok);
+  q.options.forEach((_,idx)=>{const el=document.getElementById('opt-'+idx);el.disabled=true;if(q.options[idx]===q.correct)el.classList.add('correct');else if(idx===i&&!ok)el.classList.add('wrong');});
+  const fb=document.getElementById('quiz-feedback');
+  fb.textContent=ok?'✓ Correct!':'✗ Correct answer: '+cap(q.correct);fb.className='quiz-feedback '+(ok?'show-correct':'show-wrong');
+  document.getElementById('next-btn').style.display='inline-block';
+}
+
+function nextQuestion(){qIdx++;renderQuestion();}
+function updateProgress(){document.getElementById('q-progress').style.width=(qIdx/qData.length*100)+'%';}
+
+function showResults() {
+  document.getElementById('q-progress').style.width='100%';
+  document.getElementById('quiz-body').style.display='none';
+  const correct=qAnswers.filter(Boolean).length,pct=Math.round(correct/qData.length*100);
+  if (!userData.stats)userData.stats={streak:1,learned:0,bestScore:null,learnedSet:[],quizHistory:[]};
+  if (!userData.stats.quizHistory)userData.stats.quizHistory=[];
+  userData.stats.quizHistory.push({score:pct,date:new Date().toISOString()});
+  if (userData.stats.bestScore===null||pct>userData.stats.bestScore)userData.stats.bestScore=pct;
+  saveUserData(currentUser,userData);
+  const msg=pct===100?'Perfect score — brilliant!':pct>=75?'Great work, keep it up.':pct>=50?'Not bad — review and try again.':'Keep studying — you\'ll get there.';
+  const rd=document.getElementById('quiz-results');rd.style.display='block';
+  rd.innerHTML='<div class="results-card"><div class="results-score">'+pct+'<span style="font-size:32px;color:var(--muted)">%</span></div><p class="results-label">'+correct+' / '+qData.length+' correct</p><p class="results-msg">"'+msg+'"</p><div style="display:flex;gap:12px;justify-content:center;"><button class="btn-primary" onclick="initQuiz()">Retry Quiz</button><button class="btn-secondary" onclick="showPage(\'home\')">Back to Home</button></div></div>';
+}
+
+let lookupData=null;
+async function doLookup() {
+  const word=document.getElementById('lookup-input').value.trim();if (!word)return;
+  const btn=document.getElementById('lookup-btn'),msg=document.getElementById('lookup-msg'),res=document.getElementById('lookup-result');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Looking up…';msg.textContent='';res.classList.remove('visible');lookupData=null;
+  try{
+    const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word));
+    if (!r.ok)throw new Error('Not found');
+    const data=await r.json();
+    if (!Array.isArray(data)||!data[0])throw new Error('Invalid response');
+    const entry=data[0];
+    const meaning=entry.meanings&&entry.meanings[0]?entry.meanings[0].definitions[0].definition:'';
+    const example=entry.meanings&&entry.meanings[0]&&entry.meanings[0].definitions[0]?entry.meanings[0].definitions[0].example||'':'';
+    const pos=entry.meanings&&entry.meanings[0]?entry.meanings[0].partOfSpeech:'';
+    const ipa=entry.phonetic||'';
+    lookupData={word:entry.word,ipa,pos,meaning,example,wrong:['common','normal','ordinary']};
+    document.getElementById('lr-word').textContent=entry.word;
+    document.getElementById('lr-ipa').textContent=ipa;
+    document.getElementById('lr-pos-label').textContent=pos;
+    document.getElementById('lr-def').textContent=meaning;
+    document.getElementById('lr-ex').textContent=example?'"'+example+'"':'';
+    res.classList.add('visible');msg.textContent='';
+  }catch(e){msg.style.color='var(--red)';msg.textContent='"'+word+'" not found. Try another word.';}
+  btn.disabled=false;btn.textContent='Look up';
+}
+
+function useLookupResult() {
+  if (!lookupData||!userData)return;
+  const wrong=Array.isArray(lookupData.wrong)?lookupData.wrong.slice(0,3):[];
+  while(wrong.length<3)wrong.push('common','normal','ordinary');
+  const exists=userData.words.some(w=>w.text.toLowerCase()===lookupData.word.toLowerCase());
+  const m=document.getElementById('lookup-msg');
+  if (exists){m.style.color='var(--gold)';m.textContent='"'+lookupData.word+'" is already in your library.';return;}
+  userData.words.push({text:lookupData.word,ipa:lookupData.ipa||'',pos:lookupData.pos||'',meaning:lookupData.meaning||'',example:lookupData.example||'',wrong});
+  saveUserData(currentUser,userData);
+  m.style.color='var(--green)';m.textContent='✓ "'+lookupData.word+'" added!';
+  document.getElementById('lookup-result').classList.remove('visible');
+  document.getElementById('lookup-input').value='';lookupData=null;
+  setTimeout(()=>{m.textContent='';renderAdmin();},2000);renderAdmin();
+}
+
+function renderAdmin() {
+  if (!userData)return;
+  const words=userData.words||[];
+  document.getElementById('word-count-badge').textContent=words.length+' word'+(words.length!==1?'s':'');
+  document.getElementById('word-list').innerHTML=words.length===0?'<p style="color:var(--muted);font-size:14px;text-align:center;padding:20px 0;">No words yet — look one up above!</p>':words.map((w,i)=>'<div class="word-row"><div class="word-row-info"><span class="word-row-text">'+w.text+'</span> <span class="word-row-meaning">'+w.meaning.substring(0,55)+(w.meaning.length>55?'…':'')+'</span></div><div class="word-row-actions"><button class="word-row-sound" onclick="speakText(\''+esc(w.text)+'\')" >🔊</button><button class="word-row-del" onclick="deleteWord('+i+')">✕</button></div></div>').join('');
+}
+
+function addWord() {
+  if (!userData)return;
+  const g=id=>document.getElementById(id).value.trim();
+  const word=g('a-word'),ipa=g('a-ipa'),pos=g('a-pos'),meaning=g('a-meaning'),example=g('a-example'),wrongRaw=g('a-wrong');
+  const msg=document.getElementById('admin-msg');
+  if (!word||!meaning||!example||!wrongRaw){msg.style.color='var(--red)';msg.textContent='⚠ Please fill in all required fields.';return;}
+  const wrong=wrongRaw.split(',').map(s=>s.trim()).filter(Boolean);
+  if (wrong.length<3){msg.style.color='var(--red)';msg.textContent='⚠ Provide at least 3 wrong options.';return;}
+  userData.words.push({text:word,ipa:ipa||'',pos:pos||'',meaning,example,wrong:wrong.slice(0,3)});
+  saveUserData(currentUser,userData);
+  ['a-word','a-ipa','a-pos','a-meaning','a-example','a-wrong'].forEach(id=>document.getElementById(id).value='');
+  msg.style.color='var(--green)';msg.textContent='✓ "'+word+'" added.';
+  setTimeout(()=>msg.textContent='',3000);renderAdmin();
+}
+
+function deleteWord(i) {
+  if (!userData)return;
+  userData.words.splice(i,1);saveUserData(currentUser,userData);renderAdmin();
+}
+
+function renderOwnerDashboard() {
+  const users=getUsers();
+  const keys=Object.keys(users).filter(k=>k!=='__owner__');
+  const totalWords=keys.reduce((s,k)=>s+(users[k].words||[]).length,0);
+  const totalQuizzes=keys.reduce((s,k)=>s+((users[k].stats&&users[k].stats.quizHistory)||[]).length,0);
+  const totalLearned=keys.reduce((s,k)=>s+((users[k].stats&&users[k].stats.learned)||0),0);
+  document.getElementById('owner-stats').innerHTML='<div class="owner-stat"><div class="owner-stat-val">'+keys.length+'</div><div class="owner-stat-label">Total Users</div></div><div class="owner-stat"><div class="owner-stat-val">'+totalWords+'</div><div class="owner-stat-label">Total Words</div></div><div class="owner-stat"><div class="owner-stat-val">'+totalLearned+'</div><div class="owner-stat-label">Words Learned</div></div><div class="owner-stat"><div class="owner-stat-val">'+totalQuizzes+'</div><div class="owner-stat-label">Quizzes Taken</div></div>';
+  renderOwnerUsers();
+}
+
+function renderOwnerUsers() {
+  const users=getUsers();
+  const keys=Object.keys(users).filter(k=>k!=='__owner__');
+  const query=(document.getElementById('owner-search').value||'').toLowerCase();
+  const filtered=keys.filter(k=>!query||k.includes(query)||(users[k].displayName||'').toLowerCase().includes(query));
+  const list=document.getElementById('owner-users-list');
+  if (!filtered.length){list.innerHTML='<div class="owner-empty">No users found.</div>';return;}
+  list.innerHTML=filtered.map(k=>{
+    const u=users[k],s=u.stats||{},words=u.words||[];
+    const joined=u.joinedAt?new Date(u.joinedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
+    const wordPreview=words.slice(0,4).map(w=>w.text).join(', ')+(words.length>4?' …':'');
+    return '<div class="user-card"><div class="user-card-name">'+esc(u.displayName||k)+'</div><div class="user-card-username">@'+k+' • Joined '+joined+'</div><div class="user-card-stats"><div class="user-mini-stat"><div class="user-mini-val">'+words.length+'</div><div class="user-mini-label">Words</div></div><div class="user-mini-stat"><div class="user-mini-val">'+(s.learned||0)+'</div><div class="user-mini-label">Learned</div></div><div class="user-mini-stat"><div class="user-mini-val">'+(s.streak||1)+'</div><div class="user-mini-label">Streak</div></div><div class="user-mini-stat"><div class="user-mini-val">'+((s.quizHistory||[]).length)+'</div><div class="user-mini-label">Quizzes</div></div></div><div class="user-card-footer"><div class="user-words-preview">'+(words.length?'Words: '+wordPreview:'No words yet')+'</div><button class="btn-danger-sm" onclick="deleteUser(\''+k+'\')">Delete</button></div></div>';
+  }).join('');
+}
+
+function deleteUser(username) {
+  if (!confirm('Delete user "'+username+'" and all their data?'))return;
+  const users=getUsers();delete users[username];saveUsers(users);
+  renderOwnerDashboard();
+}
+
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+(function(){
+  const saved=getCurrentUser();
+  if (saved==='__owner__')bootOwner();
+  else if (saved&&getUserData(saved))bootApp(saved);
+})();
+</script>
+</body>
+</html>
